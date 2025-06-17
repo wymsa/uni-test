@@ -30,10 +30,10 @@ services:
     image: natsio/nats-box
     container_name: nats-box
     restart: unless-stopped
-    command: [ "sh", "-c", "sh /home/nats/nats-box-init.sh && sleep infinity" ]
+    command: [ "sh", "-c", "apk add --no-cache dos2unix && cp /home/nats/nats-box-init.sh /tmp/init.sh && dos2unix /tmp/init.sh && chmod +x /tmp/init.sh && sh /tmp/init.sh && sleep infinity" ]
     volumes:
       - "nats-box-volume:/home/nats/.config/nats"
-      - "./nats-box-init.sh:/home/nats/nats-box-init.sh:ro"
+      - "./nats-box-init.sh:/home/nats/nats-box-init.sh"
     depends_on:
       - nats
     networks:

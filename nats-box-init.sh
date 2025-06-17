@@ -1,3 +1,5 @@
+#!/bin/sh
+
 STREAM="events"
 SUBJECTS="events.>"
 NATS_SERVER="nats"
