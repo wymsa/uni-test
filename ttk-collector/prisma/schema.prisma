@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model TiktokEvent {
+  eventId      String           @id @map("event_id")
+  timestamp    DateTime
+  source       String
+  funnelStage  String           @map("funnel_stage")
+  eventType    String           @map("event_type")
+  user         TiktokUser       @relation(fields: [userId], references: [userId])
+  userId       String           @map("user_id")
+  engagement   TiktokEngagement @relation(fields: [engagementId], references: [id])
+  engagementId Int              @map("engagement_id")
+}
+
+model TiktokUser {
+  userId    String        @id @map("user_id")
+  username  String
+  followers Int
+  events    TiktokEvent[]
+}
+
+model TiktokEngagement {
+  id                Int           @id @default(autoincrement())
+  watchTime         Int?          @map("watch_time") // для top
+  percentageWatched Int?          @map("percentage_watched") // для top
+  device            String? // для top
+  country           String? // для top
+  videoId           String?       @map("video_id") // для top
+  actionTime        DateTime?     @map("action_time") // для bottom
+  profileId         String?       @map("profile_id") // для bottom
+  purchasedItem     String?       @map("purchased_item") // для bottom
+  purchaseAmount    String?       @map("purchase_amount") // для bottom
+  events            TiktokEvent[]
+}

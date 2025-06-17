@@ -1,0 +1,145 @@
+# TODO: Сделать волюм на jetstream (вроде сделал)
+# TODO: Закинуть сюда image генератор ивентов https://hub.docker.com/r/andriiuni/events
+services:
+  events:
+    image: andriiuni/events:latest
+    container_name: events
+    environment:
+      - EVENT_ENDPOINT=http://gateway:3000/events/webhook
+    networks:
+      - backend
+    depends_on:
+      - gateway
+      - nats
+      - postgres
+  nats:
+    image: nats
+    container_name: nats-server
+    restart: unless-stopped
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+      - "6222:6222"
+    command: ["-js", "-sd", "/data"]
+    volumes:
+      - "nats-server-volume:/data"
+    networks:
+      - backend
+    stop_grace_period: 20s
+  nats-box:
+    image: natsio/nats-box
+    container_name: nats-box
+    restart: unless-stopped
+    command: [ "sh", "-c", "sh /home/nats/nats-box-init.sh && sleep infinity" ]
+    volumes:
+      - "nats-box-volume:/home/nats/.config/nats"
+      - "./nats-box-init.sh:/home/nats/nats-box-init.sh:ro"
+    depends_on:
+      - nats
+    networks:
+      - backend
+  postgres:
+    image: postgres
+    container_name: postgres-server
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - "postgres-volume:/var/lib/postgresql/data"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=uni_test_db
+    networks:
+      - backend
+    stop_grace_period: 20s
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NATS_SERVER=nats://nats:4222
+    depends_on:
+      - nats
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  reporter:
+    build:
+      context: ./reporter
+      dockerfile: Dockerfile
+    container_name: reporter
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - NATS_SERVER=nats://nats:4222
+    depends_on:
+      - nats
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  ttk-collector:
+    build:
+      context: ./ttk-collector
+      dockerfile: Dockerfile
+    container_name: ttk-collector
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - NATS_SERVER=nats://nats:4222
+      - DATABASE_URL=postgresql://postgres:root@postgres:5432/uni_test_db?schema=ttk-collector
+    depends_on:
+      - nats
+      - postgres
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    stop_grace_period: 20s
+  fb-collector:
+    build:
+      context: ./fb-collector
+      dockerfile: Dockerfile
+    container_name: fb-collector
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - NATS_SERVER=nats://nats:4222
+      - DATABASE_URL=postgresql://postgres:root@postgres:5432/uni_test_db?schema=fb-collector
+    depends_on:
+      - nats
+      - postgres
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    stop_grace_period: 20s
+volumes:
+  nats-server-volume:
+  nats-box-volume:
+  postgres-volume:
+networks:
+  backend:
+    driver: bridge

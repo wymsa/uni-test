@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model FacebookEvent {
+  eventId      String             @id @map("event_id")
+  timestamp    DateTime
+  source       String
+  funnelStage  String             @map("funnel_stage")
+  eventType    String             @map("event_type")
+  user         FacebookUser       @relation(fields: [userId], references: [userId])
+  userId       String             @map("user_id")
+  engagement   FacebookEngagement @relation(fields: [engagementId], references: [id])
+  engagementId Int                @map("engagement_id")
+}
+
+model FacebookUser {
+  userId     String               @id @map("user_id")
+  name       String
+  age        Int
+  gender     String
+  location   FacebookUserLocation @relation(fields: [locationId], references: [id])
+  locationId Int                  @map("location_id")
+  events     FacebookEvent[]
+}
+
+model FacebookEngagement {
+  id             Int             @id @default(autoincrement())
+  actionTime     DateTime?       @map("action_time") // для top
+  referrer       String? // для top
+  videoId        String?         @map("video_id") // для top
+  adId           String?         @map("ad_id") // для bottom
+  campaignId     String?         @map("campaign_id") // для bottom
+  clickPosition  String?         @map("click_position")
+  device         String?
+  browser        String?
+  purchaseAmount String?         @map("purchase_amount")
+  events         FacebookEvent[]
+}
+
+model FacebookUserLocation {
+  id      Int            @id @default(autoincrement())
+  country String
+  city    String
+  users   FacebookUser[]
+
+  @@unique([country, city], name: "country_city_unique")
+}
+
+// enum FunnelStage {
+//   top
+//   bottom
+// }
